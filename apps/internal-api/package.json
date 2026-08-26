@@ -16,7 +16,7 @@
   ],
   "scripts": {
     "generate-specs": "tsx src/index.ts --openapi > openapi.json",
-    "build": "node build.mjs src/server.ts build/server.js"
+    "build": "node build.mjs"
   },
   "dependencies": {
     "@lib/dao": "workspace:*",
