@@ -15,7 +15,8 @@
     }
   ],
   "scripts": {
-    "generate-specs": "tsx src/index.ts --openapi > openapi.json"
+    "generate-specs": "tsx src/index.ts --openapi > openapi.json",
+    "build": "node build.mjs src/server.ts build/server.js"
   },
   "dependencies": {
     "@lib/dao": "workspace:*",
@@ -31,9 +32,11 @@
     "hono-typebox-openapi": "^0.2.0",
     "kysely": "catalog:",
     "typebox": "catalog:",
-    "uuid": "catalog:"
+    "uuid": "catalog:",
+    "@hono/node-server": "^1.19.7"
   },
   "devDependencies": {
-    "@hey-api/openapi-ts": "catalog:"
+    "@hey-api/openapi-ts": "catalog:",
+    "esbuild": "^0.28.1"
   }
 }

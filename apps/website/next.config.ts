@@ -3,6 +3,15 @@ import type { NextConfig } from "next"
 
 const nextConfig: NextConfig = {
   reactCompiler: true,
+  /*
+    SproutOS runs this on Lambda behind the Lambda Web Adapter, which starts `server.js` and
+    forwards each invocation to it. That file only exists under standalone output — without this
+    setting the deploy fails at "Nothing at 'apps/website/.next/standalone'".
+  */
+  output: "standalone",
+  // A workspace app: without this, tracing roots at the app directory and the standalone tree is
+  // missing every file it imports from `lib/` and `packages/`.
+  outputFileTracingRoot: path.join(__dirname, "..", ".."),
   // Links routinely point at SPA routes served through the proxy (e.g. /dashboard),
   // which typed routes would reject as unknown Next.js routes
   typedRoutes: false,
