@@ -98,8 +98,21 @@ esac
 # entries in readdir order, which differs between filesystems. And every entry's mtime is pinned,
 # because zip records timestamps with no option to omit them; without this the digest changes on
 # every checkout even when nothing in the tree did.
-find . -exec touch -t 202001010000.00 {} +
-find . -type f -o -type l | LC_ALL=C sort | zip -X -q -@ "$archive"
+# `-L`, and this is the difference between a working deploy and a 234 KB archive.
+#
+# A pnpm workspace links dependencies rather than copying them, so Next's standalone tree contains
+# `node_modules/next` as a **symlink to a directory**. `find . -type f` does not descend into one,
+# and `find . -type l` lists the link itself — which zip stores as a single entry with nothing
+# inside. The archive builds, uploads and publishes, and the function dies on
+# `Cannot find module 'next'` from a tree that visibly contains it.
+#
+# `-L` follows symlinks while descending, so the files inside a linked package are enumerated at the
+# paths the application will look for them.
+find -L . -exec touch -t 202001010000.00 {} + 2>/dev/null || true
+# A broken symlink is not `-type f` under `-L`, so it is excluded here without a second test —
+# `-xtype` would have done it explicitly and does not exist in BSD find, which is how a check like
+# that ends up passing in CI and failing for anyone testing on a Mac.
+find -L . -type f | LC_ALL=C sort | zip -X -q -@ "$archive"
 
 # Compiled native modules built for the wrong machine.
 #
