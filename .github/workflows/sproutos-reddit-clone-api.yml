@@ -1,0 +1,33 @@
+# Deploys reddit-clone-api to SproutOS on every push to main.
+name: Deploy reddit-clone-api
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter=@api/internal build
+
+      - uses: MySproutOS/sproutos-deploy-action@main
+        with:
+          preset: hono
+          # This app's build script writes `build/`, not the preset's `dist/`.
+          directory: apps/internal-api/build
+          project: reddit-clone-api
+          api-url: https://api.sproutos.me

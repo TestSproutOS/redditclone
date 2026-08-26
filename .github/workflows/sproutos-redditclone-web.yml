@@ -1,0 +1,42 @@
+# Deploys redditclone-web to SproutOS on every push to main.
+name: Deploy redditclone-web
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  # Required. Without it there is no OIDC token and the deploy fails at its first step with an
+  # authentication error that does not mention permissions.
+  id-token: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter=website build
+
+      - uses: MySproutOS/sproutos-deploy-action@main
+        with:
+          preset: next
+          # A workspace app, so the standalone tree is under the app's path rather than at the root.
+          directory: apps/website/.next/standalone
+          # Next's standalone output deliberately excludes these — it assumes a CDN serves them —
+          # so they are named here, with the URL prefix each is served under.
+          static-paths: |
+            apps/website/.next/static:_next/static
+            apps/website/public:
+          # Required: this repository holds more than one SproutOS project, and the platform
+          # refuses to guess which one a workflow deploys.
+          project: redditclone-web
+          api-url: https://api.sproutos.me
