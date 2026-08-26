@@ -24,7 +24,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter=@api/internal build
 
-      - uses: MySproutOS/sproutos-deploy-action@main
+      - uses: ./.github/actions/sproutos-deploy
         with:
           preset: hono
           # This app's build script writes `build/`, not the preset's `dist/`.

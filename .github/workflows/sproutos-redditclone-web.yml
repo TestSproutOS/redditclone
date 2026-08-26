@@ -26,7 +26,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter=website build
 
-      - uses: MySproutOS/sproutos-deploy-action@main
+      - uses: ./.github/actions/sproutos-deploy
         with:
           preset: next
           # A workspace app, so the standalone tree is under the app's path rather than at the root.

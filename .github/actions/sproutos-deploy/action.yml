@@ -1,0 +1,182 @@
+name: Deploy to SproutOS
+description: Upload a built application to SproutOS and release it.
+author: SproutOS
+
+# A composite action, not JavaScript and not Docker.
+#
+# JavaScript would mean committing `node_modules` or a bundler step, and shipping a bundle whose
+# provenance a customer cannot read. Docker would mean pulling an image on every run, which is
+# slower than everything this action actually does. Composite is shell in the open — a customer can
+# read exactly what runs in their repository, which matters for an action that holds a token.
+
+branding:
+  icon: upload-cloud
+  color: green
+
+inputs:
+  preset:
+    description: >-
+      What was built: next, hono, android, or static. Decides which files are collected and how the
+      platform runs them.
+    required: true
+  directory:
+    description: >-
+      Where the build output is. Defaults to the preset's conventional location, so most callers do
+      not set it.
+    required: false
+    default: ""
+  project:
+    description: >-
+      The SproutOS project slug. Defaults to the repository name.
+
+      **Required when the repository holds more than one project** — a monorepo deploying a web app
+      and an API separately, or any repository whose projects sit under a group. The platform
+      refuses to guess: picking one would deploy the right code onto the wrong service, which looks
+      exactly like success.
+    required: false
+    default: ""
+  environment:
+    description: production, preview, or development.
+    required: false
+    default: production
+  api-url:
+    description: The SproutOS API. Override only for a self-hosted or staging platform.
+    required: false
+    default: https://api.sproutos.me
+  runtime:
+    description: >-
+      The Lambda runtime to publish on, e.g. `nodejs22.x`. Defaults to the preset's, so most callers
+      do not set it. Set it to pin a version rather than follow the platform default.
+    required: false
+    default: ""
+  handler:
+    description: The function entry point, e.g. `index.handler`. Defaults to the preset's.
+    required: false
+    default: ""
+  migration-directory:
+    description: >-
+      A built database migrator. When set, it is uploaded alongside the application and run **before**
+      the new version takes traffic — a failed migration fails the deploy and leaves the previous
+      release serving.
+
+      Unset means this project has no migration step, which is recorded as `skipped` rather than as
+      nothing, so "no migrations" and "somebody forgot" do not look the same.
+    required: false
+    default: ""
+  migration-handler:
+    description: The migrator's entry point. Defaults to the application's handler.
+    required: false
+    default: ""
+  static-paths:
+    description: >-
+      Directories of static assets to publish to the CDN instead of shipping inside the function,
+      one per line, as `source` or `source:url-prefix`.
+
+      Most callers leave this unset: each preset has a default that is correct for it. Set it to add
+      a directory the preset does not know about, and set it to `none` to publish nothing.
+
+      Plural because a real build has more than one — a Next.js app has hashed chunks under
+      `.next/static` and hand-written files under `public/`, which land at different URLs and cannot
+      be expressed as a single path.
+
+      Assets published this way are served from a **platform-managed** bucket through the CDN, so
+      they do not count against the function's 200 MB archive limit and are not re-downloaded by
+      every cold start.
+
+      That bucket is not your project's object-storage service. It is shared across tenants and
+      keyed by project — the key prefix is the boundary — and it holds build output only. Files your
+      application uploads at runtime belong in the `object_storage` service you provision, which has
+      its own credentials and its own lifecycle. Nothing here writes to that.
+    required: false
+    default: ""
+  token:
+    description: >-
+      A SproutOS deploy token. **Leave this unset.** Without it the action authenticates with GitHub
+      OIDC, which issues a short-lived token scoped to this repository and this workflow run — a
+      secret that cannot leak because it is never stored. Set it only where OIDC is unavailable.
+    required: false
+    default: ""
+
+outputs:
+  url:
+    description: Where the deployment is reachable.
+    value: ${{ steps.release.outputs.url }}
+  deployment-id:
+    description: The SproutOS deployment id, for polling or rollback.
+    value: ${{ steps.release.outputs.deployment-id }}
+
+runs:
+  using: composite
+  steps:
+    - name: Resolve the preset
+      id: preset
+      shell: bash
+      env:
+        PRESET: ${{ inputs.preset }}
+        DIRECTORY: ${{ inputs.directory }}
+        STATIC_PATHS: ${{ inputs.static-paths }}
+      run: ${{ github.action_path }}/scripts/resolve-preset.sh
+
+    - name: Authenticate
+      id: auth
+      shell: bash
+      env:
+        API_URL: ${{ inputs.api-url }}
+        SUPPLIED_TOKEN: ${{ inputs.token }}
+        # Provided by GitHub when the workflow requests `id-token: write`. The action cannot request
+        # that permission for the caller — a workflow grants its own — so the failure when it is
+        # missing has to name the fix, which `authenticate.sh` does.
+        ACTIONS_ID_TOKEN_REQUEST_URL: ${{ env.ACTIONS_ID_TOKEN_REQUEST_URL }}
+        ACTIONS_ID_TOKEN_REQUEST_TOKEN: ${{ env.ACTIONS_ID_TOKEN_REQUEST_TOKEN }}
+        # Which project in this repository. The token is minted for it, and every later call reads
+        # the project from the token — so naming it here is what stops a monorepo's API deploy
+        # landing on its website.
+        PROJECT: ${{ inputs.project || github.event.repository.name }}
+      run: ${{ github.action_path }}/scripts/authenticate.sh
+
+    - name: Package
+      id: package
+      shell: bash
+      env:
+        DIRECTORY: ${{ steps.preset.outputs.directory }}
+        PRESET: ${{ steps.preset.outputs.preset }}
+      run: ${{ github.action_path }}/scripts/package.sh
+
+    - name: Package the migrator
+      id: migration
+      shell: bash
+      env:
+        MIGRATION_DIRECTORY: ${{ inputs.migration-directory }}
+      run: ${{ github.action_path }}/scripts/package-migration.sh
+
+    - name: Package the static assets
+      id: static
+      shell: bash
+      env:
+        STATIC_PATHS: ${{ steps.preset.outputs.static-paths }}
+      run: ${{ github.action_path }}/scripts/package-static.sh
+
+    - name: Upload and release
+      id: release
+      shell: bash
+      env:
+        STATIC_ARCHIVE: ${{ steps.static.outputs.static-archive }}
+        STATIC_DIGEST: ${{ steps.static.outputs.static-digest }}
+        API_URL: ${{ inputs.api-url }}
+        SPROUTOS_TOKEN: ${{ steps.auth.outputs.token }}
+        ARCHIVE: ${{ steps.package.outputs.archive }}
+        DIGEST: ${{ steps.package.outputs.digest }}
+        PRESET: ${{ steps.preset.outputs.preset }}
+        PROJECT: ${{ inputs.project || github.event.repository.name }}
+        ENVIRONMENT: ${{ inputs.environment }}
+        COMMIT: ${{ github.sha }}
+        REF: ${{ github.ref_name }}
+        # The commit subject, so a deployment list reads like a history rather than a column of
+        # shas. Trimmed to one line here because a body would break the JSON payload.
+        MESSAGE: ${{ github.event.head_commit.message }}
+        RUNTIME: ${{ inputs.runtime }}
+        HANDLER: ${{ inputs.handler }}
+        MIGRATION_ARCHIVE: ${{ steps.migration.outputs.migration-archive }}
+        MIGRATION_DIGEST: ${{ steps.migration.outputs.migration-digest }}
+        MIGRATION_HANDLER: ${{ inputs.migration-handler }}
+      run: ${{ github.action_path }}/scripts/release.sh
