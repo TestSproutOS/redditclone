@@ -37,7 +37,9 @@ export async function handler(): Promise<{ results: string[] }> {
       provider: new FileMigrationProvider({
         fs,
         path,
-        migrationFolder: path.join(import.meta.dirname, "migrations"),
+        // `__dirname`, because this is bundled to CommonJS — see `build.mjs`. Relative to the file
+        // rather than to `process.cwd()`, which on Lambda is `/var/task` only by convention.
+        migrationFolder: path.join(__dirname, "migrations"),
       }),
     })
 
