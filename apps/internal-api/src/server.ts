@@ -14,7 +14,19 @@ import app from "./index"
  * Separate from `dev-server.ts` rather than shared, because the two differ in the part that matters:
  * a dev server should die fast when `turbo` tears it down, and this one must not.
  */
-const port = Number(process.env.API_PORT) || 3001
+/*
+  `PORT` first, then this app's own `API_PORT`.
+
+  Every platform that runs a web process tells it where to listen through `PORT`, and SproutOS is
+  no exception — the Lambda Web Adapter forwards each invocation to that port and gives up if
+  nothing answers. Reading only `API_PORT` meant the server started, listened on 3001, and the
+  adapter waited on 8080 until the invocation timed out: no error, no crash, just
+  `app is not ready after 28000ms` and a request that never returns.
+
+  `API_PORT` is kept because local development sets it, and a convention this app already has is
+  not worth breaking to adopt another.
+*/
+const port = Number(process.env.PORT) || Number(process.env.API_PORT) || 3001
 
 const server = serve({ fetch: app.fetch, port }, (info) => {
   console.info(JSON.stringify({ level: "info", message: "listening", port: info.port }))
