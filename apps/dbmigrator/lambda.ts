@@ -1,4 +1,7 @@
-import { FileMigrationProvider, Kysely, Migrator, PostgresDialect } from "kysely"
+import { Kysely, PostgresDialect } from "kysely"
+// Kysely 0.29 moved the migration API to its own entry point; importing these from the root
+// resolves and then fails at build with "no matching export", which reads like a version mismatch.
+import { FileMigrationProvider, Migrator } from "kysely/migration"
 import { promises as fs } from "node:fs"
 import * as path from "node:path"
 import { Pool } from "pg"
