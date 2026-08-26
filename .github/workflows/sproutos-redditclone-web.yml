@@ -25,6 +25,10 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter=website build
+      # The migrator is a separate program with its own entry point, run to completion before the
+      # new version takes traffic. A failed migration fails the deploy and leaves the previous
+      # release serving.
+      - run: pnpm --filter=dbmigrator build
 
       - uses: ./.github/actions/sproutos-deploy
         with:
@@ -38,5 +42,7 @@ jobs:
             apps/website/public:
           # Required: this repository holds more than one SproutOS project, and the platform
           # refuses to guess which one a workflow deploys.
+          migration-directory: apps/dbmigrator/build
+          migration-handler: index.handler
           project: redditclone-web
           api-url: https://api.sproutos.me
