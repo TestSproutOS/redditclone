@@ -23,11 +23,15 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter=@api/internal build
+      - run: pnpm --filter=dbmigrator build
 
-      - uses: MySproutOS/sproutos-deploy-action@main
+      - uses: MySproutOS/sproutos-deploy-action@v1
         with:
           preset: hono
           # This app's build script writes `build/`, not the preset's `dist/`.
           directory: apps/internal-api/build
+          # Apply the built migrator before the new function receives traffic. The action is
+          # single-attempt, so an ambiguous invocation is reported for inspection, not replayed.
+          migration-directory: apps/dbmigrator/build
           project: reddit-clone-api
           api-url: https://api.sproutos.me
