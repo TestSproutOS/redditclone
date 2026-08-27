@@ -33,5 +33,8 @@ jobs:
           # Apply the built migrator before the new function receives traffic. The action is
           # single-attempt, so an ambiguous invocation is reported for inspection, not replayed.
           migration-directory: apps/dbmigrator/build
+          # The Hono preset defaults the application to run.handler. The separately-built
+          # migrator exports handler from index.js, so its entry point must be named explicitly.
+          migration-handler: index.handler
           project: reddit-clone-api
           api-url: https://api.sproutos.me
