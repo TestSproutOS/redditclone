@@ -23,6 +23,7 @@
     "uuid": "catalog:"
   },
   "devDependencies": {
+    "@types/pg": "^8.20.0",
     "esbuild": "^0.28.1",
     "kysely-ctl": "^0.21.0"
   }

@@ -56,7 +56,8 @@ export async function handler(): Promise<{ results: string[] }> {
       (result) => `${result.status}: ${result.migrationName} (${result.direction})`,
     )
     if (error !== undefined) {
-      throw new Error(`${lines.join("\n")}\n${String(error)}`)
+      const message = error instanceof Error ? error.message : "Unknown migration error"
+      throw new Error(`${lines.join("\n")}\n${message}`)
     }
     return { results: lines }
   } finally {
