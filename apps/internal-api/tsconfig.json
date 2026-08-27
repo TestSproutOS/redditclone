@@ -28,6 +28,7 @@
   "include": ["**/*.ts", "**/*.json"],
   "exclude": ["node_modules", "build", "**/*.test.ts"],
   "references": [
+    { "path": "../bullground" },
     { "path": "../../packages/db" },
     { "path": "../../lib/typescript/dao" },
     { "path": "../../packages/search" }

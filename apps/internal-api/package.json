@@ -29,6 +29,7 @@
     "@utils/aws": "workspace:*",
     "@utils/numbers": "workspace:*",
     "@utils/queues": "workspace:*",
+    "bullground": "workspace:*",
     "hono": "catalog:",
     "hono-typebox-openapi": "^0.2.0",
     "kysely": "catalog:",
