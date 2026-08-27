@@ -2,9 +2,15 @@ import { randomUUID } from "node:crypto"
 import { getCommunityAuthz } from "@lib/dao/authz/community/get"
 import { crudCommunity } from "@lib/dao/community/crud"
 import { fetchPost } from "@lib/dao/post/fetch"
+import { fetchPostMedia } from "@lib/dao/postMedia/fetch"
 import { crudUser } from "@lib/dao/user/crud"
 import { db } from "@template-nextjs/db"
-import { createImageUploadPost, existsOnS3, getExtensionForImageContentType } from "@utils/aws"
+import {
+  existsOnS3,
+  getExtensionForImageContentType,
+  getObjectFromS3,
+  putObjectToS3,
+} from "@utils/aws"
 import { promoteMediaCleanup } from "@utils/queues"
 import { Hono } from "hono"
 import { describeRoute } from "hono-typebox-openapi"
@@ -20,15 +26,20 @@ import {
   mediaCommunityIconUploadSchemaRequest,
   mediaConfirmSchemaRequest,
   mediaKeyConfirmSchemaRequest,
+  mediaUploadSchemaQuery,
   mediaUploadSchemaResponse,
 } from "./media.serializer"
+import { isPublicMediaKey, MEDIA_TRANSFER_MAX_BYTES, mimeTypeForImageKey } from "./media-path"
 
-const AVATAR_MAX_BYTES = 5 * 1024 * 1024
-const BANNER_MAX_BYTES = 10 * 1024 * 1024
+function uploadUrl(requestUrl: string, key: string): string {
+  const url = new URL("/api/v1/media/upload", requestUrl)
+  url.searchParams.set("key", key)
+  return url.toString()
+}
 
 const uploadResponse = {
   200: {
-    description: "Presigned upload",
+    description: "Authenticated application upload",
     content: { "application/json": { schema: resolver(mediaUploadSchemaResponse) } },
   },
   400: {
@@ -61,7 +72,113 @@ const confirmResponse = {
 }
 
 const app = new Hono()
+  .get(
+    "/object/*",
+    describeRoute({
+      description: "Read public application media",
+      responses: {
+        200: { description: "Media object" },
+        404: {
+          description: "Media not found",
+          content: { "application/json": { schema: resolver(ErrorSchemaResponse) } },
+        },
+      },
+    }),
+    async (c) => {
+      const key = c.req.param("*") ?? ""
+      if (!isPublicMediaKey(key)) return throwNotFound(c, "Media not found")
+      const object = await getObjectFromS3(key, MEDIA_TRANSFER_MAX_BYTES)
+      if (!object) return throwNotFound(c, "Media not found")
+      return new Response(Buffer.from(object.body), {
+        headers: {
+          "cache-control": "public, max-age=31536000, immutable",
+          "content-length": String(object.body.byteLength),
+          "content-type": object.contentType,
+          "x-content-type-options": "nosniff",
+        },
+      })
+    },
+  )
   .use(authMiddleware)
+  .put(
+    "/upload",
+    describeRoute({
+      description: "Upload media through the authenticated application server",
+      responses: {
+        200: {
+          description: "Uploaded",
+          content: { "application/json": { schema: resolver(EmptyObject) } },
+        },
+        400: {
+          description: "Invalid upload",
+          content: { "application/json": { schema: resolver(ErrorSchemaResponse) } },
+        },
+        403: {
+          description: "Not permitted",
+          content: { "application/json": { schema: resolver(ErrorSchemaResponse) } },
+        },
+      },
+    }),
+    validator("query", mediaUploadSchemaQuery),
+    async (c) => {
+      const user = c.var.user
+      const { key } = c.req.valid("query")
+      const contentType = (c.req.header("content-type") ?? "").split(";")[0]?.toLowerCase()
+      const contentLength = Number(c.req.header("content-length"))
+      if (
+        !Number.isSafeInteger(contentLength) ||
+        contentLength <= 0 ||
+        contentLength > MEDIA_TRANSFER_MAX_BYTES
+      ) {
+        return throwBadRequest(c, "Invalid media size", undefined, { target: "content-length" })
+      }
+
+      let expectedMimeType: string | null = null
+      if (key.startsWith(`user-avatar/${user.id}/`) || key.startsWith(`user-banner/${user.id}/`)) {
+        expectedMimeType = mimeTypeForImageKey(key)
+      } else if (key.startsWith("community-icon/") || key.startsWith("community-banner/")) {
+        const communityId = key.split("/")[1]
+        if (!communityId) return throwForbidden(c, "Invalid upload target")
+        const mod = await getCommunityAuthz(db).canModerate(communityId, user.id, "config")
+        if (!mod.ok) return throwForbidden(c, "You cannot configure this community")
+        expectedMimeType = mimeTypeForImageKey(key)
+      } else if (key.startsWith("post-media/")) {
+        const media = await fetchPostMedia(db).getByS3Key(key, [
+          "postId",
+          "mimeType",
+          "byteSize",
+          "uploadStatus",
+        ])
+        if (!media || media.uploadStatus !== "pending") {
+          return throwForbidden(c, "Invalid upload target")
+        }
+        const post = await fetchPost(db).getOne(media.postId, ["authorUserId"])
+        if (!post || post.authorUserId !== user.id) return throwForbidden(c, "Not your post")
+        if (media.byteSize !== null && Number(media.byteSize) !== contentLength) {
+          return throwBadRequest(c, "Media size does not match", undefined, {
+            target: "content-length",
+          })
+        }
+        expectedMimeType = media.mimeType
+      } else {
+        return throwForbidden(c, "Invalid upload target")
+      }
+
+      if (!isPublicMediaKey(key) || !contentType || expectedMimeType !== contentType) {
+        return throwBadRequest(c, "Media type does not match", undefined, {
+          target: "content-type",
+        })
+      }
+      const body = new Uint8Array(await c.req.arrayBuffer())
+      if (body.byteLength !== contentLength) {
+        return throwBadRequest(c, "Media size does not match", undefined, {
+          target: "content-length",
+        })
+      }
+      await putObjectToS3(key, body, contentType)
+      return c.json({})
+    },
+  )
   .post(
     "/confirm",
     describeRoute({
@@ -84,25 +201,18 @@ const app = new Hono()
   .post(
     "/avatar-upload",
     describeRoute({
-      description: "Presigned upload for the current user's avatar",
+      description: "Application upload for the current user's avatar",
       responses: uploadResponse,
     }),
     validator("json", mediaAvatarUploadSchemaRequest),
-    async (c) => {
+    (c) => {
       const user = c.var.user
       const { mimeType } = c.req.valid("json")
       const ext = getExtensionForImageContentType(mimeType) ?? "bin"
       const key = `user-avatar/${user.id}/${randomUUID()}.${ext}`
-      const presigned = await createImageUploadPost({
-        key,
-        contentType: mimeType,
-        maxSizeBytes: AVATAR_MAX_BYTES,
-      })
       return c.json({
-        key: presigned.key,
-        url: presigned.url,
-        fields: presigned.fields,
-        publicUrl: presigned.publicUrl,
+        key,
+        url: uploadUrl(c.req.url, key),
       })
     },
   )
@@ -129,25 +239,18 @@ const app = new Hono()
   .post(
     "/banner-upload",
     describeRoute({
-      description: "Presigned upload for the current user's profile banner",
+      description: "Application upload for the current user's profile banner",
       responses: uploadResponse,
     }),
     validator("json", mediaBannerUploadSchemaRequest),
-    async (c) => {
+    (c) => {
       const user = c.var.user
       const { mimeType } = c.req.valid("json")
       const ext = getExtensionForImageContentType(mimeType) ?? "bin"
       const key = `user-banner/${user.id}/${randomUUID()}.${ext}`
-      const presigned = await createImageUploadPost({
-        key,
-        contentType: mimeType,
-        maxSizeBytes: BANNER_MAX_BYTES,
-      })
       return c.json({
-        key: presigned.key,
-        url: presigned.url,
-        fields: presigned.fields,
-        publicUrl: presigned.publicUrl,
+        key,
+        url: uploadUrl(c.req.url, key),
       })
     },
   )
@@ -174,7 +277,7 @@ const app = new Hono()
   .post(
     "/community-icon-upload",
     describeRoute({
-      description: "Presigned upload for a community icon (mod config permission required)",
+      description: "Application upload for a community icon (mod config permission required)",
       responses: uploadResponse,
     }),
     validator("json", mediaCommunityIconUploadSchemaRequest),
@@ -185,16 +288,9 @@ const app = new Hono()
       if (!mod.ok) return throwForbidden(c, "You cannot configure this community")
       const ext = getExtensionForImageContentType(mimeType) ?? "bin"
       const key = `community-icon/${communityId}/${randomUUID()}.${ext}`
-      const presigned = await createImageUploadPost({
-        key,
-        contentType: mimeType,
-        maxSizeBytes: AVATAR_MAX_BYTES,
-      })
       return c.json({
-        key: presigned.key,
-        url: presigned.url,
-        fields: presigned.fields,
-        publicUrl: presigned.publicUrl,
+        key,
+        url: uploadUrl(c.req.url, key),
       })
     },
   )
@@ -223,7 +319,7 @@ const app = new Hono()
   .post(
     "/community-banner-upload",
     describeRoute({
-      description: "Presigned upload for a community banner (mod config permission required)",
+      description: "Application upload for a community banner (mod config permission required)",
       responses: uploadResponse,
     }),
     validator("json", mediaCommunityBannerUploadSchemaRequest),
@@ -234,16 +330,9 @@ const app = new Hono()
       if (!mod.ok) return throwForbidden(c, "You cannot configure this community")
       const ext = getExtensionForImageContentType(mimeType) ?? "bin"
       const key = `community-banner/${communityId}/${randomUUID()}.${ext}`
-      const presigned = await createImageUploadPost({
-        key,
-        contentType: mimeType,
-        maxSizeBytes: BANNER_MAX_BYTES,
-      })
       return c.json({
-        key: presigned.key,
-        url: presigned.url,
-        fields: presigned.fields,
-        publicUrl: presigned.publicUrl,
+        key,
+        url: uploadUrl(c.req.url, key),
       })
     },
   )

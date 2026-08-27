@@ -41,7 +41,7 @@ import {
   MAX_MEDIA_FILES,
   mediaTypeOf,
   readImageDimensions,
-  uploadToPresigned,
+  uploadToApi,
   validateMediaFile,
   type MediaDraft,
 } from "@frontends/dashboard/lib/mediaUpload"
@@ -497,13 +497,9 @@ export function SubmitForm({ fixedCommunity }: SubmitFormProps) {
           if (!draft) return
           patchDraft(draft.id, { status: "uploading", progress: 0 })
           try {
-            await uploadToPresigned(
-              { url: upload.url, fields: upload.fields },
-              draft.file,
-              (percent) => {
-                patchDraft(draft.id, { progress: percent })
-              },
-            )
+            await uploadToApi({ url: upload.url }, draft.file, (percent) => {
+              patchDraft(draft.id, { progress: percent })
+            })
             patchDraft(draft.id, { status: "done", progress: 100 })
           } catch (err: unknown) {
             patchDraft(draft.id, { status: "error" })

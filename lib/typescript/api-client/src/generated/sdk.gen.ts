@@ -534,6 +534,9 @@ import type {
   PutApiV1FlairByCommunityIdMyFlairData,
   PutApiV1FlairByCommunityIdMyFlairErrors,
   PutApiV1FlairByCommunityIdMyFlairResponses,
+  PutApiV1MediaUploadData,
+  PutApiV1MediaUploadErrors,
+  PutApiV1MediaUploadResponses,
   PutApiV1MutedCommunityByCommunityIdData,
   PutApiV1MutedCommunityByCommunityIdErrors,
   PutApiV1MutedCommunityByCommunityIdResponses,
@@ -2090,6 +2093,18 @@ export const getApiV1HistoryRecentCommunities = <ThrowOnError extends boolean = 
   )
 
 /**
+ * Upload media through the authenticated application server
+ */
+export const putApiV1MediaUpload = <ThrowOnError extends boolean = false>(
+  options: Options<PutApiV1MediaUploadData, ThrowOnError>,
+): RequestResult<PutApiV1MediaUploadResponses, PutApiV1MediaUploadErrors, ThrowOnError> =>
+  (options.client ?? client).put<
+    PutApiV1MediaUploadResponses,
+    PutApiV1MediaUploadErrors,
+    ThrowOnError
+  >({ url: "/api/v1/media/upload", ...options })
+
+/**
  * Confirm a media post's uploads finished, promoting its cleanup job
  */
 export const postApiV1MediaConfirm = <ThrowOnError extends boolean = false>(
@@ -2109,7 +2124,7 @@ export const postApiV1MediaConfirm = <ThrowOnError extends boolean = false>(
   })
 
 /**
- * Presigned upload for the current user's avatar
+ * Application upload for the current user's avatar
  */
 export const postApiV1MediaAvatarUpload = <ThrowOnError extends boolean = false>(
   options?: Options<PostApiV1MediaAvatarUploadData, ThrowOnError>,
@@ -2155,7 +2170,7 @@ export const postApiV1MediaAvatarConfirm = <ThrowOnError extends boolean = false
   })
 
 /**
- * Presigned upload for the current user's profile banner
+ * Application upload for the current user's profile banner
  */
 export const postApiV1MediaBannerUpload = <ThrowOnError extends boolean = false>(
   options?: Options<PostApiV1MediaBannerUploadData, ThrowOnError>,
@@ -2201,7 +2216,7 @@ export const postApiV1MediaBannerConfirm = <ThrowOnError extends boolean = false
   })
 
 /**
- * Presigned upload for a community icon (mod config permission required)
+ * Application upload for a community icon (mod config permission required)
  */
 export const postApiV1MediaCommunityIconUpload = <ThrowOnError extends boolean = false>(
   options?: Options<PostApiV1MediaCommunityIconUploadData, ThrowOnError>,
@@ -2247,7 +2262,7 @@ export const postApiV1MediaCommunityIconConfirm = <ThrowOnError extends boolean 
   })
 
 /**
- * Presigned upload for a community banner (mod config permission required)
+ * Application upload for a community banner (mod config permission required)
  */
 export const postApiV1MediaCommunityBannerUpload = <ThrowOnError extends boolean = false>(
   options?: Options<PostApiV1MediaCommunityBannerUploadData, ThrowOnError>,

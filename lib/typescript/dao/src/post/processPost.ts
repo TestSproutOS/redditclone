@@ -7,7 +7,9 @@ import type { RawPostRow } from "./fetch"
 declare const process: { env: Record<string, string | undefined> }
 
 function mediaPublicUrl(key: string): string {
-  const base = process.env.PUBLIC_MEDIA_BASE_URL ?? ""
+  const base =
+    process.env.PUBLIC_MEDIA_BASE_URL ??
+    "https://reddit-clone-api-834f87.sproutos.run/api/v1/media/object"
   const trimmedBase = base.endsWith("/") ? base.slice(0, -1) : base
   const trimmedKey = key.startsWith("/") ? key.slice(1) : key
   return `${trimmedBase}/${trimmedKey}`

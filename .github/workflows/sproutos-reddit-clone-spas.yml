@@ -17,6 +17,7 @@ permissions:
 env:
   NPM_CONFIG_FUND: false
   NEXT_PUBLIC_API_URL: https://reddit-clone-api-834f87.sproutos.run/api
+  VITE_PUBLIC_MEDIA_BASE_URL: https://reddit-clone-api-834f87.sproutos.run/api/v1/media/object
   VITE_NEXTJS_URL: https://redditclone-web-938433.sproutos.run
 
 jobs:

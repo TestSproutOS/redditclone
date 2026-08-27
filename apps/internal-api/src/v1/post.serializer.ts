@@ -41,7 +41,6 @@ export const postCreateSchemaResponse = Type.Object({
         position: Type.Number(),
         key: Type.String(),
         url: Type.String(),
-        fields: Type.Record(Type.String(), Type.String()),
       }),
     ),
   ),
