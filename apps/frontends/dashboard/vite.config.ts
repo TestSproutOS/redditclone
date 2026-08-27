@@ -14,6 +14,9 @@ const fontsourceFiles = (pkg: string) =>
 
 export default defineConfig(({ mode }) => ({
   base: mode === "production" ? "https://d1i66hf38xpie.cloudfront.net/dashboard/" : "/",
+  define: {
+    "process.env.NEXT_PUBLIC_API_URL": JSON.stringify(process.env.NEXT_PUBLIC_API_URL ?? ""),
+  },
   plugins: [
     tanstackRouter({ quoteStyle: "double" }),
     react(),

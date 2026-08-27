@@ -18,6 +18,9 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_API_URL: https://reddit-clone-api-834f87.sproutos.run/api
+      VITE_NEXTJS_URL: https://redditclone-web-938433.sproutos.run
     steps:
       - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v4

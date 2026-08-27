@@ -1,9 +1,11 @@
 import { Scalar } from "@scalar/hono-api-reference"
 import { Hono } from "hono"
+import { cors } from "hono/cors"
 import { generateSpecs, type OpenApiSpecsOptions, openAPISpecs } from "hono-typebox-openapi"
 import { ErrorObjectT, ErrorResponseT, InnerErrorT } from "./utils/errors/error.serializer"
 import v1 from "./v1"
 import admin from "./admin"
+import { corsOrigin } from "./utils/cors"
 
 const spec: OpenApiSpecsOptions = {
   documentation: {
@@ -24,6 +26,16 @@ const spec: OpenApiSpecsOptions = {
 }
 
 const app = new Hono().basePath("/api")
+
+// The browser applications are deployed as separate static projects, so their API calls are
+// credentialed cross-origin requests. Keep this list explicit: every other SproutOS tenant also
+// lives below sproutos.run and must not be able to use a signed-in ReadIt session.
+app.use(
+  cors({
+    origin: (origin) => corsOrigin(origin, process.env.CORS_ALLOWED_ORIGINS, process.env.NODE_ENV),
+    credentials: true,
+  }),
+)
 if (process.env.NODE_ENV === "development") {
   app.get(
     "/openapi",
