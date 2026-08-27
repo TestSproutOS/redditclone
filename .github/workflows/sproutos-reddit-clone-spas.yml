@@ -1,0 +1,59 @@
+name: Deploy RedditClone SPAs
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/frontends/dashboard/**"
+      - "apps/frontends/admin/**"
+      - "lib/typescript/ui/**"
+      - "lib/typescript/api-client/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  NPM_CONFIG_FUND: false
+  NEXT_PUBLIC_API_URL: https://reddit-clone-api-834f87.sproutos.run/api
+  VITE_NEXTJS_URL: https://redditclone-web-938433.sproutos.run
+
+jobs:
+  dashboard:
+    name: Deploy dashboard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24.14.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter=dashboard exec vite build --base=/
+      - uses: MySproutOS/sproutos-deploy-action@v1
+        with:
+          preset: static
+          directory: apps/frontends/dashboard/dist
+          project: reddit-clone-dashboard
+          api-url: https://api.sproutos.me
+
+  admin:
+    name: Deploy admin
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24.14.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter=admin exec vite build --base=/
+      - uses: MySproutOS/sproutos-deploy-action@v1
+        with:
+          preset: static
+          directory: apps/frontends/admin/dist
+          project: reddit-clone-admin
+          api-url: https://api.sproutos.me
