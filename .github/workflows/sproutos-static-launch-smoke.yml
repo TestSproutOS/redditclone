@@ -26,7 +26,10 @@ jobs:
           node-version: 24.14.0
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm exec turbo run build --filter=${{ inputs.spa }}
+      # These SPAs normally publish into the platform's legacy /dashboard and /admin CDN prefixes.
+      # A tenant static release owns its hostname root, so its generated asset URLs must be relative
+      # to that root instead of pointing back at the old distribution.
+      - run: pnpm --filter=${{ inputs.spa }} exec vite build --base=/
       - uses: MySproutOS/sproutos-deploy-action@v1
         with:
           preset: static
