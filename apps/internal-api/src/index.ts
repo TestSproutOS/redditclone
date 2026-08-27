@@ -6,6 +6,7 @@ import { ErrorObjectT, ErrorResponseT, InnerErrorT } from "./utils/errors/error.
 import v1 from "./v1"
 import admin from "./admin"
 import { corsOrigin } from "./utils/cors"
+import events from "./events"
 
 const spec: OpenApiSpecsOptions = {
   documentation: {
@@ -25,33 +26,33 @@ const spec: OpenApiSpecsOptions = {
   },
 }
 
-const app = new Hono().basePath("/api")
+const api = new Hono().basePath("/api")
 
 // The browser applications are deployed as separate static projects, so their API calls are
 // credentialed cross-origin requests. Keep this list explicit: every other SproutOS tenant also
 // lives below sproutos.run and must not be able to use a signed-in ReadIt session.
-app.use(
+api.use(
   cors({
     origin: (origin) => corsOrigin(origin, process.env.CORS_ALLOWED_ORIGINS, process.env.NODE_ENV),
     credentials: true,
   }),
 )
 if (process.env.NODE_ENV === "development") {
-  app.get(
+  api.get(
     "/openapi",
-    openAPISpecs(app, {
+    openAPISpecs(api, {
       ...spec,
       exclude: /^\/api\/admin(?:\/|$).*/,
     }),
   )
-  app.get(
+  api.get(
     "/admin-openapi",
-    openAPISpecs(app, {
+    openAPISpecs(api, {
       ...spec,
       exclude: /^(?!\/api\/admin(?:\/|$)).*/,
     }),
   )
-  app.get(
+  api.get(
     "/docs",
     Scalar(() => {
       return {
@@ -60,7 +61,7 @@ if (process.env.NODE_ENV === "development") {
       }
     }),
   )
-  app.get(
+  api.get(
     "/admin-docs",
     Scalar(() => {
       return {
@@ -71,7 +72,8 @@ if (process.env.NODE_ENV === "development") {
   )
 }
 
-const routes = app.route("", v1).route("", admin)
+const routes = api.route("", v1).route("", admin)
+const app = new Hono().route("", events).route("", routes)
 
 export default app
 export type AppType = typeof routes

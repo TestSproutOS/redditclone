@@ -1,5 +1,5 @@
 export { connection } from "./connection"
-export { fastQueue, mediumQueue, slowQueue } from "./queues"
+export { fastQueue, mediumQueue, queueOptions, slowQueue } from "./queues"
 export {
   enqueue,
   enqueueEsBackfill,
