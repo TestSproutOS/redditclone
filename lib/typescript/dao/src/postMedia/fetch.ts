@@ -39,5 +39,16 @@ export function fetchPostMedia(db: Kysely<DB>) {
     return Number(row?.count ?? 0)
   }
 
-  return { getManyByPost, getCompletedByPosts, countCompletedByPost }
+  async function getByS3Key<T extends (keyof DB["postMedia"])[]>(
+    s3Key: string,
+    fields: T,
+  ): Promise<Pick<Selectable<DB["postMedia"]>, T[number]> | undefined> {
+    return await db
+      .selectFrom("postMedia")
+      .select(fields)
+      .where("s3Key", "=", s3Key)
+      .executeTakeFirst()
+  }
+
+  return { getManyByPost, getCompletedByPosts, countCompletedByPost, getByS3Key }
 }

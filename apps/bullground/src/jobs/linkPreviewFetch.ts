@@ -5,7 +5,7 @@ import { getExtensionForImageContentType, isAllowedImageType, putObjectToS3 } fr
 import type { JobPayloadMap } from "@utils/queues"
 
 const HTML_MAX_BYTES = 2 * 1024 * 1024
-const IMAGE_MAX_BYTES = 10 * 1024 * 1024
+const IMAGE_MAX_BYTES = 4 * 1024 * 1024
 const FETCH_TIMEOUT_MS = 10 * 1000
 const USER_AGENT = "ReadItBot/1.0 (+link-preview)"
 

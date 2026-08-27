@@ -6,6 +6,9 @@ on:
     branches: [main]
   workflow_dispatch:
 
+env:
+  NEXT_PUBLIC_API_URL: https://reddit-clone-api-834f87.sproutos.run/api
+
 permissions:
   contents: read
   # Required. Without it there is no OIDC token and the deploy fails at its first step with an

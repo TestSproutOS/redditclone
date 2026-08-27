@@ -8,8 +8,7 @@ const imageMimeType = Type.Union([
   Type.Literal("image/webp"),
 ])
 
-const AVATAR_MAX_BYTES = 5 * 1024 * 1024
-const BANNER_MAX_BYTES = 10 * 1024 * 1024
+const MEDIA_TRANSFER_MAX_BYTES = 4 * 1024 * 1024
 
 export const mediaConfirmSchemaRequest = Type.Object({
   postId: UUID7String,
@@ -17,12 +16,12 @@ export const mediaConfirmSchemaRequest = Type.Object({
 
 export const mediaAvatarUploadSchemaRequest = Type.Object({
   mimeType: imageMimeType,
-  byteSize: Type.Number({ minimum: 0, multipleOf: 1, maximum: AVATAR_MAX_BYTES }),
+  byteSize: Type.Number({ minimum: 1, multipleOf: 1, maximum: MEDIA_TRANSFER_MAX_BYTES }),
 })
 
 export const mediaBannerUploadSchemaRequest = Type.Object({
   mimeType: imageMimeType,
-  byteSize: Type.Number({ minimum: 0, multipleOf: 1, maximum: BANNER_MAX_BYTES }),
+  byteSize: Type.Number({ minimum: 1, multipleOf: 1, maximum: MEDIA_TRANSFER_MAX_BYTES }),
 })
 
 export const mediaKeyConfirmSchemaRequest = Type.Object({
@@ -32,13 +31,13 @@ export const mediaKeyConfirmSchemaRequest = Type.Object({
 export const mediaCommunityIconUploadSchemaRequest = Type.Object({
   communityId: UUID7String,
   mimeType: imageMimeType,
-  byteSize: Type.Number({ minimum: 0, multipleOf: 1, maximum: AVATAR_MAX_BYTES }),
+  byteSize: Type.Number({ minimum: 1, multipleOf: 1, maximum: MEDIA_TRANSFER_MAX_BYTES }),
 })
 
 export const mediaCommunityBannerUploadSchemaRequest = Type.Object({
   communityId: UUID7String,
   mimeType: imageMimeType,
-  byteSize: Type.Number({ minimum: 0, multipleOf: 1, maximum: BANNER_MAX_BYTES }),
+  byteSize: Type.Number({ minimum: 1, multipleOf: 1, maximum: MEDIA_TRANSFER_MAX_BYTES }),
 })
 
 export const mediaCommunityConfirmSchemaRequest = Type.Object({
@@ -49,6 +48,8 @@ export const mediaCommunityConfirmSchemaRequest = Type.Object({
 export const mediaUploadSchemaResponse = Type.Object({
   key: Type.String(),
   url: Type.String(),
-  fields: Type.Record(Type.String(), Type.String()),
-  publicUrl: Type.String(),
+})
+
+export const mediaUploadSchemaQuery = Type.Object({
+  key: Type.String({ minLength: 1, maxLength: 512 }),
 })

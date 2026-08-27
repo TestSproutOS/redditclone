@@ -3,7 +3,7 @@ import { fetchPost } from "@lib/dao/post/fetch"
 import { crudPostMedia } from "@lib/dao/postMedia/crud"
 import { fetchPostMedia } from "@lib/dao/postMedia/fetch"
 import { db } from "@template-nextjs/db"
-import { createMediaUploadPost, deleteFromS3, existsOnS3 } from "@utils/aws"
+import { deleteFromS3, existsOnS3, getObjectFromS3, putObjectToS3 } from "@utils/aws"
 import { v7 } from "uuid"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 
@@ -105,24 +105,14 @@ describe.skipIf(process.env.CI === "true")("postMedia DAO lifecycle and feed gua
     expect(idsAfterConfirm).toContain(mediaPostId)
   })
 
-  it("presigns, uploads to Garage, verifies via HeadObject, and deletes", async () => {
+  it("uploads with the server credential, reads, verifies, and deletes", async () => {
     const key = `post-media/${mediaPostId}/probe-${v7()}.png`
-    const presigned = await createMediaUploadPost({
-      key,
-      contentType: "image/png",
-      maxSizeBytes: 20 * 1024 * 1024,
-    })
-
-    const form = new FormData()
-    for (const [field, value] of Object.entries(presigned.fields)) {
-      form.append(field, value)
-    }
-    form.append("file", new Blob([PNG_1PX], { type: "image/png" }), "probe.png")
-
-    const res = await fetch(presigned.url, { method: "POST", body: form })
-    expect(res.status).toBeLessThan(300)
+    await putObjectToS3(key, PNG_1PX, "image/png")
 
     expect(await existsOnS3(key)).toBe(true)
+    const stored = await getObjectFromS3(key, 1024)
+    expect(stored?.contentType).toBe("image/png")
+    expect(Buffer.from(stored?.body ?? [])).toEqual(PNG_1PX)
 
     await deleteFromS3(key)
     expect(await existsOnS3(key)).toBe(false)

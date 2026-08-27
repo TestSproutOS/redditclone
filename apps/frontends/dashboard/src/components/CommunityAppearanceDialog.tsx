@@ -17,7 +17,7 @@ import {
 } from "@lib/api-client/generated/sdk.gen"
 import { ImageCropDialog } from "@frontends/dashboard/components/ImageCropDialog"
 import { mediaUrl } from "@frontends/dashboard/lib/mediaUrl"
-import { uploadToPresigned } from "@frontends/dashboard/lib/mediaUpload"
+import { uploadToApi } from "@frontends/dashboard/lib/mediaUpload"
 import { ImagePlus } from "lucide-react"
 import { toast } from "sonner"
 
@@ -69,7 +69,7 @@ export function CommunityAppearanceDialog({
         target === "icon"
           ? await postApiV1MediaCommunityIconUpload({ body, throwOnError: true })
           : await postApiV1MediaCommunityBannerUpload({ body, throwOnError: true })
-      await uploadToPresigned({ url: data.url, fields: data.fields }, blob)
+      await uploadToApi({ url: data.url }, blob)
       if (target === "icon") {
         await postApiV1MediaCommunityIconConfirm({
           body: { communityId, key: data.key },

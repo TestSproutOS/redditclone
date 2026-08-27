@@ -1,4 +1,5 @@
 import { buildMediaUrl } from "@ui/seo-shared/media/mediaUrl"
+import { baseUrl } from "@lib/api-client/index"
 
 /**
  * Public base URL for stored media, resolved from the SPA build env. Defaults to
@@ -6,8 +7,7 @@ import { buildMediaUrl } from "@ui/seo-shared/media/mediaUrl"
  * (`PUBLIC_MEDIA_BASE_URL=http://readit-media.web.garage.localhost:21693`).
  */
 const MEDIA_BASE_URL =
-  (import.meta.env.VITE_PUBLIC_MEDIA_BASE_URL as string | undefined) ??
-  "http://readit-media.web.garage.localhost:21693"
+  (import.meta.env.VITE_PUBLIC_MEDIA_BASE_URL as string | undefined) ?? `${baseUrl}/v1/media/object`
 
 /** SPA-bound convenience wrapper around {@link buildMediaUrl}. */
 export function mediaUrl(key: string | null | undefined): string | null {

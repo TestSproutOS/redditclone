@@ -47,7 +47,7 @@ import { PREFERENCE_TYPES } from "@frontends/dashboard/components/notifications/
 import { AccountEngagementCards } from "@frontends/dashboard/components/AccountEngagementCards"
 import { ImageCropDialog } from "@frontends/dashboard/components/ImageCropDialog"
 import { mediaUrl } from "@frontends/dashboard/lib/mediaUrl"
-import { uploadToPresigned } from "@frontends/dashboard/lib/mediaUpload"
+import { uploadToApi } from "@frontends/dashboard/lib/mediaUpload"
 import { ImagePlus } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
@@ -251,7 +251,7 @@ function ProfileTab() {
         cropTarget === "avatar"
           ? await postApiV1MediaAvatarUpload({ body, throwOnError: true })
           : await postApiV1MediaBannerUpload({ body, throwOnError: true })
-      await uploadToPresigned({ url: data.url, fields: data.fields }, blob)
+      await uploadToApi({ url: data.url }, blob)
       if (cropTarget === "avatar") {
         await postApiV1MediaAvatarConfirm({ body: { key: data.key }, throwOnError: true })
       } else {

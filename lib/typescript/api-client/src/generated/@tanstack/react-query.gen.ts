@@ -203,6 +203,7 @@ import {
   putApiV1CommunityWidgetByCommunityIdWidgetReorder,
   putApiV1CustomFeedByIdCommunityByCommunityId,
   putApiV1FlairByCommunityIdMyFlair,
+  putApiV1MediaUpload,
   putApiV1MutedCommunityByCommunityId,
   putApiV1NotificationPreferences,
   putApiV1PostActionFollowByPostId,
@@ -745,6 +746,9 @@ import type {
   PutApiV1FlairByCommunityIdMyFlairData,
   PutApiV1FlairByCommunityIdMyFlairError,
   PutApiV1FlairByCommunityIdMyFlairResponse,
+  PutApiV1MediaUploadData,
+  PutApiV1MediaUploadError,
+  PutApiV1MediaUploadResponse,
   PutApiV1MutedCommunityByCommunityIdData,
   PutApiV1MutedCommunityByCommunityIdError,
   PutApiV1MutedCommunityByCommunityIdResponse,
@@ -4050,6 +4054,33 @@ export const getApiV1HistoryRecentCommunitiesOptions = (
   })
 
 /**
+ * Upload media through the authenticated application server
+ */
+export const putApiV1MediaUploadMutation = (
+  options?: Partial<Options<PutApiV1MediaUploadData>>,
+): UseMutationOptions<
+  PutApiV1MediaUploadResponse,
+  PutApiV1MediaUploadError,
+  Options<PutApiV1MediaUploadData>
+> => {
+  const mutationOptions: UseMutationOptions<
+    PutApiV1MediaUploadResponse,
+    PutApiV1MediaUploadError,
+    Options<PutApiV1MediaUploadData>
+  > = {
+    mutationFn: async (fnOptions) => {
+      const { data } = await putApiV1MediaUpload({
+        ...options,
+        ...fnOptions,
+        throwOnError: true,
+      })
+      return data
+    },
+  }
+  return mutationOptions
+}
+
+/**
  * Confirm a media post's uploads finished, promoting its cleanup job
  */
 export const postApiV1MediaConfirmMutation = (
@@ -4077,7 +4108,7 @@ export const postApiV1MediaConfirmMutation = (
 }
 
 /**
- * Presigned upload for the current user's avatar
+ * Application upload for the current user's avatar
  */
 export const postApiV1MediaAvatarUploadMutation = (
   options?: Partial<Options<PostApiV1MediaAvatarUploadData>>,
@@ -4131,7 +4162,7 @@ export const postApiV1MediaAvatarConfirmMutation = (
 }
 
 /**
- * Presigned upload for the current user's profile banner
+ * Application upload for the current user's profile banner
  */
 export const postApiV1MediaBannerUploadMutation = (
   options?: Partial<Options<PostApiV1MediaBannerUploadData>>,
@@ -4185,7 +4216,7 @@ export const postApiV1MediaBannerConfirmMutation = (
 }
 
 /**
- * Presigned upload for a community icon (mod config permission required)
+ * Application upload for a community icon (mod config permission required)
  */
 export const postApiV1MediaCommunityIconUploadMutation = (
   options?: Partial<Options<PostApiV1MediaCommunityIconUploadData>>,
@@ -4239,7 +4270,7 @@ export const postApiV1MediaCommunityIconConfirmMutation = (
 }
 
 /**
- * Presigned upload for a community banner (mod config permission required)
+ * Application upload for a community banner (mod config permission required)
  */
 export const postApiV1MediaCommunityBannerUploadMutation = (
   options?: Partial<Options<PostApiV1MediaCommunityBannerUploadData>>,

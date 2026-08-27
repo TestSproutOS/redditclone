@@ -19,7 +19,7 @@ export const s3Client = new S3Client({
           secretAccessKey: process.env.S3_SECRET_ACCESS_KEY,
         }
       : undefined,
-  forcePathStyle: true,
+  forcePathStyle: process.env.S3_FORCE_PATH_STYLE !== "false",
 })
 
 export function getS3BucketName(): string {

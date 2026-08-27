@@ -3559,9 +3559,6 @@ export type PatchApiV1PostByIdResponses = {
       position: number
       key: string
       url: string
-      fields: {
-        [key: string]: unknown | string
-      }
     }>
   }
 }
@@ -3617,9 +3614,6 @@ export type PostApiV1PostResponses = {
       position: number
       key: string
       url: string
-      fields: {
-        [key: string]: unknown | string
-      }
     }>
   }
 }
@@ -4375,6 +4369,40 @@ export type GetApiV1HistoryRecentCommunitiesResponses = {
 export type GetApiV1HistoryRecentCommunitiesResponse =
   GetApiV1HistoryRecentCommunitiesResponses[keyof GetApiV1HistoryRecentCommunitiesResponses]
 
+export type PutApiV1MediaUploadData = {
+  body?: never
+  path?: never
+  query: {
+    key: string
+  }
+  url: "/api/v1/media/upload"
+}
+
+export type PutApiV1MediaUploadErrors = {
+  /**
+   * Invalid upload
+   */
+  400: ErrorResponseT
+  /**
+   * Not permitted
+   */
+  403: ErrorResponseT
+}
+
+export type PutApiV1MediaUploadError = PutApiV1MediaUploadErrors[keyof PutApiV1MediaUploadErrors]
+
+export type PutApiV1MediaUploadResponses = {
+  /**
+   * Uploaded
+   */
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type PutApiV1MediaUploadResponse =
+  PutApiV1MediaUploadResponses[keyof PutApiV1MediaUploadResponses]
+
 export type PostApiV1MediaConfirmData = {
   body?: {
     postId: string
@@ -4440,15 +4468,11 @@ export type PostApiV1MediaAvatarUploadError =
 
 export type PostApiV1MediaAvatarUploadResponses = {
   /**
-   * Presigned upload
+   * Authenticated application upload
    */
   200: {
     key: string
     url: string
-    fields: {
-      [key: string]: unknown | string
-    }
-    publicUrl: string
   }
 }
 
@@ -4520,15 +4544,11 @@ export type PostApiV1MediaBannerUploadError =
 
 export type PostApiV1MediaBannerUploadResponses = {
   /**
-   * Presigned upload
+   * Authenticated application upload
    */
   200: {
     key: string
     url: string
-    fields: {
-      [key: string]: unknown | string
-    }
-    publicUrl: string
   }
 }
 
@@ -4601,15 +4621,11 @@ export type PostApiV1MediaCommunityIconUploadError =
 
 export type PostApiV1MediaCommunityIconUploadResponses = {
   /**
-   * Presigned upload
+   * Authenticated application upload
    */
   200: {
     key: string
     url: string
-    fields: {
-      [key: string]: unknown | string
-    }
-    publicUrl: string
   }
 }
 
@@ -4683,15 +4699,11 @@ export type PostApiV1MediaCommunityBannerUploadError =
 
 export type PostApiV1MediaCommunityBannerUploadResponses = {
   /**
-   * Presigned upload
+   * Authenticated application upload
    */
   200: {
     key: string
     url: string
-    fields: {
-      [key: string]: unknown | string
-    }
-    publicUrl: string
   }
 }
 

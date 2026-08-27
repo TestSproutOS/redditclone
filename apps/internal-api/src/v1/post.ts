@@ -10,7 +10,7 @@ import { crudPostVote } from "@lib/dao/postVote/crud"
 import { fetchPostFlairTemplate } from "@lib/dao/postFlairTemplate/fetch"
 import { crudPostView } from "@lib/dao/postView/crud"
 import { db } from "@template-nextjs/db"
-import { createMediaUploadPost, getExtensionForMediaContentType } from "@utils/aws"
+import { getExtensionForMediaContentType } from "@utils/aws"
 import { enqueueEsSyncPost, enqueueLinkPreviewFetch, enqueueMediaCleanup } from "@utils/queues"
 import { Hono } from "hono"
 import { describeRoute } from "hono-typebox-openapi"
@@ -61,8 +61,7 @@ function titleMatchesRegex(title: string, pattern: string): boolean {
 
 const IMAGE_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"])
 const VIDEO_MIME_TYPES = new Set(["video/mp4", "video/webm"])
-const IMAGE_MAX_BYTES = 20 * 1024 * 1024
-const VIDEO_MAX_BYTES = 200 * 1024 * 1024
+const MEDIA_MAX_BYTES = 4 * 1024 * 1024
 
 interface MediaInput {
   mediaType: string
@@ -75,12 +74,12 @@ interface MediaInput {
 function validateMediaFile(file: MediaInput): string | null {
   if (file.mediaType === "image") {
     if (!IMAGE_MIME_TYPES.has(file.mimeType)) return `Unsupported image type: ${file.mimeType}`
-    if (file.byteSize > IMAGE_MAX_BYTES) return "Images must be 20MB or smaller"
+    if (file.byteSize > MEDIA_MAX_BYTES) return "Images must be 4MB or smaller"
     return null
   }
   if (file.mediaType === "video") {
     if (!VIDEO_MIME_TYPES.has(file.mimeType)) return `Unsupported video type: ${file.mimeType}`
-    if (file.byteSize > VIDEO_MAX_BYTES) return "Videos must be 200MB or smaller"
+    if (file.byteSize > MEDIA_MAX_BYTES) return "Videos must be 4MB or smaller"
     return null
   }
   return `Unsupported media type: ${file.mediaType}`
@@ -368,22 +367,11 @@ const app = new Hono()
           }
         })
         await crudPostMedia(db).createMany(created.id, items)
-        const uploads = await Promise.all(
-          items.map(async (item) => {
-            const maxSizeBytes = item.mediaType === "image" ? IMAGE_MAX_BYTES : VIDEO_MAX_BYTES
-            const presigned = await createMediaUploadPost({
-              key: item.s3Key,
-              contentType: item.mimeType,
-              maxSizeBytes,
-            })
-            return {
-              position: item.position,
-              key: item.s3Key,
-              url: presigned.url,
-              fields: presigned.fields,
-            }
-          }),
-        )
+        const uploads = items.map((item) => {
+          const url = new URL("/api/v1/media/upload", c.req.url)
+          url.searchParams.set("key", item.s3Key)
+          return { position: item.position, key: item.s3Key, url: url.toString() }
+        })
         await enqueueMediaCleanup(created.id)
         return c.json({ id: created.id, uploads }, 201)
       }
