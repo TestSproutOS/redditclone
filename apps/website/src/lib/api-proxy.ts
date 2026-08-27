@@ -7,12 +7,12 @@ const HOP_BY_HOP_HEADERS = [
   "trailer",
   "transfer-encoding",
   "upgrade",
-] as const;
+] as const
 
 function withoutHopByHopHeaders(input: Headers): Headers {
-  const headers = new Headers(input);
-  for (const name of HOP_BY_HOP_HEADERS) headers.delete(name);
-  return headers;
+  const headers = new Headers(input)
+  for (const name of HOP_BY_HOP_HEADERS) headers.delete(name)
+  return headers
 }
 
 /**
@@ -29,34 +29,34 @@ export async function proxyApiRequest(
   upstreamBase = process.env.NEXT_PUBLIC_API_UPSTREAM_URL,
 ): Promise<Response> {
   if (upstreamBase === undefined || upstreamBase.trim() === "") {
-    return Response.json({ error: "API upstream is not configured" }, { status: 503 });
+    return Response.json({ error: "API upstream is not configured" }, { status: 503 })
   }
 
-  const requestUrl = new URL(request.url);
-  const target = new URL(upstreamBase);
-  const basePath = target.pathname.replace(/\/$/, "");
-  const suffix = route.map((segment) => encodeURIComponent(segment)).join("/");
-  target.pathname = suffix === "" ? basePath : `${basePath}/${suffix}`;
-  target.search = requestUrl.search;
+  const requestUrl = new URL(request.url)
+  const target = new URL(upstreamBase)
+  const basePath = target.pathname.replace(/\/$/, "")
+  const suffix = route.map((segment) => encodeURIComponent(segment)).join("/")
+  target.pathname = suffix === "" ? basePath : `${basePath}/${suffix}`
+  target.search = requestUrl.search
 
-  const headers = withoutHopByHopHeaders(request.headers);
-  headers.delete("host");
-  headers.delete("content-length");
-  headers.set("x-forwarded-host", requestUrl.host);
-  headers.set("x-forwarded-proto", requestUrl.protocol.replace(/:$/, ""));
+  const headers = withoutHopByHopHeaders(request.headers)
+  headers.delete("host")
+  headers.delete("content-length")
+  headers.set("x-forwarded-host", requestUrl.host)
+  headers.set("x-forwarded-proto", requestUrl.protocol.replace(/:$/, ""))
 
-  const hasBody = request.method !== "GET" && request.method !== "HEAD";
+  const hasBody = request.method !== "GET" && request.method !== "HEAD"
   const response = await fetch(target, {
     method: request.method,
     headers,
     body: hasBody ? await request.arrayBuffer() : undefined,
     redirect: "manual",
     cache: "no-store",
-  });
+  })
 
   return new Response(response.body, {
     status: response.status,
     statusText: response.statusText,
     headers: withoutHopByHopHeaders(response.headers),
-  });
+  })
 }
