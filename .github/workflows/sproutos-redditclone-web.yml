@@ -7,7 +7,10 @@ on:
   workflow_dispatch:
 
 env:
-  NEXT_PUBLIC_API_URL: https://reddit-clone-api-834f87.sproutos.run/api
+  # Browser traffic stays on the website origin so its host-only session cookie remains isolated
+  # and usable. The server route forwards to the separately deployed API.
+  NEXT_PUBLIC_API_URL: /api
+  NEXT_PUBLIC_API_UPSTREAM_URL: https://reddit-clone-api-834f87.sproutos.run/api
 
 permissions:
   contents: read

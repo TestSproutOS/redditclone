@@ -16,9 +16,11 @@ permissions:
 
 env:
   NPM_CONFIG_FUND: false
-  NEXT_PUBLIC_API_URL: https://reddit-clone-api-834f87.sproutos.run/api
-  VITE_PUBLIC_MEDIA_BASE_URL: https://reddit-clone-api-834f87.sproutos.run/api/v1/media/object
-  VITE_NEXTJS_URL: https://redditclone-web-938433.sproutos.run
+  # These SPAs are rewritten under the website's current host. Relative URLs preserve the
+  # host-only login cookie on both the canonical and custom domains.
+  NEXT_PUBLIC_API_URL: /api
+  VITE_PUBLIC_MEDIA_BASE_URL: /api/v1/media/object
+  VITE_NEXTJS_URL: ""
 
 jobs:
   dashboard:
