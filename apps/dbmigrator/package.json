@@ -19,11 +19,12 @@
     "@faker-js/faker": "catalog:",
     "@template-nextjs/db": "workspace:*",
     "kysely": "catalog:",
-    "uuid": "catalog:",
-    "pg": "^8.16.3"
+    "pg": "^8.16.3",
+    "uuid": "catalog:"
   },
   "devDependencies": {
-    "kysely-ctl": "^0.21.0",
-    "esbuild": "^0.28.1"
+    "@types/pg": "^8.20.0",
+    "esbuild": "^0.28.1",
+    "kysely-ctl": "^0.21.0"
   }
 }

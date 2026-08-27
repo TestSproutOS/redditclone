@@ -18,7 +18,7 @@
     "paths": {
       "@dbmigrator/*": ["./src/*"]
     },
-    "rootDir": "./src",
+    "rootDir": ".",
     "outDir": "./build"
   },
   "include": ["**/*.ts"],

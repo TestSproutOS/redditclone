@@ -19,6 +19,7 @@
     "build": "node build.mjs"
   },
   "dependencies": {
+    "@hono/node-server": "^1.19.7",
     "@lib/dao": "workspace:*",
     "@oslojs/crypto": "catalog:",
     "@oslojs/encoding": "catalog:",
@@ -32,8 +33,7 @@
     "hono-typebox-openapi": "^0.2.0",
     "kysely": "catalog:",
     "typebox": "catalog:",
-    "uuid": "catalog:",
-    "@hono/node-server": "^1.19.7"
+    "uuid": "catalog:"
   },
   "devDependencies": {
     "@hey-api/openapi-ts": "catalog:",

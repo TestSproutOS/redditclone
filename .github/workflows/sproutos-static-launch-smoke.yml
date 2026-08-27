@@ -1,0 +1,35 @@
+name: Deploy static launch smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      spa:
+        description: Static application to publish
+        required: true
+        type: choice
+        options:
+          - dashboard
+          - admin
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24.14.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec turbo run build --filter=${{ inputs.spa }}
+      - uses: MySproutOS/sproutos-deploy-action@v1
+        with:
+          preset: static
+          directory: apps/frontends/${{ inputs.spa }}/dist
+          project: static-launch-smoke
+          api-url: https://api.sproutos.me
