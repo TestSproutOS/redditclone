@@ -1,10 +1,19 @@
-import app from "@api/internal"
-import { handle } from "hono/vercel"
+import { proxyApiRequest } from "@website/lib/api-proxy"
 
 export const runtime = "nodejs"
+export const dynamic = "force-dynamic"
 
-export const GET = handle(app)
-export const POST = handle(app)
-export const PUT = handle(app)
-export const PATCH = handle(app)
-export const DELETE = handle(app)
+type RouteContext = { params: Promise<{ route?: string[] }> }
+
+async function handle(request: Request, context: RouteContext): Promise<Response> {
+  const { route = [] } = await context.params
+  return proxyApiRequest(request, route)
+}
+
+export const GET = handle
+export const HEAD = handle
+export const OPTIONS = handle
+export const POST = handle
+export const PUT = handle
+export const PATCH = handle
+export const DELETE = handle

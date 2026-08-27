@@ -431,9 +431,6 @@ importers:
 
   apps/website:
     dependencies:
-      '@api/internal':
-        specifier: workspace:*
-        version: link:../internal-api
       '@base-ui/react':
         specifier: 'catalog:'
         version: 1.6.0(@date-fns/tz@1.5.0)(@types/react@19.2.17)(date-fns@4.4.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
