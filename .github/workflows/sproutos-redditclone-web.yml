@@ -11,6 +11,10 @@ env:
   # and usable. The server route forwards to the separately deployed API.
   NEXT_PUBLIC_API_URL: /api
   NEXT_PUBLIC_API_UPSTREAM_URL: https://reddit-clone-api-834f87.sproutos.run/api
+  # Server-side rewrite targets. Browser URLs remain on this website so the host-only session
+  # cookie is never shared with either static project.
+  DASHBOARD_SPA_ORIGIN: https://reddit-clone-dashboard-4104ab.sproutos.run
+  ADMIN_SPA_ORIGIN: https://reddit-clone-admin-d337a7.sproutos.run
 
 permissions:
   contents: read
