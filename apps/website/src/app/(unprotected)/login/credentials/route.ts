@@ -9,21 +9,20 @@ import {
   verifyPasswordOrDummy,
 } from "@website/lib/password"
 import { isSameOriginRequest } from "@website/lib/same-origin"
+import { isSafeRelativeRedirect, relativeRedirect } from "@website/lib/relative-redirect"
 import { randomUUID } from "node:crypto"
 
 const USERNAME_PATTERN = /^[A-Za-z0-9_-]{3,24}$/
 
 function destination(formData: FormData): string {
   const next = formData.get("next")
-  return typeof next === "string" && next.startsWith("/") && !next.startsWith("//") ? next : "/"
+  return typeof next === "string" && isSafeRelativeRedirect(next) ? next : "/"
 }
 
-function loginRedirect(request: Request, message: string, intent: string, next: string): Response {
-  const target = new URL("/login", request.url)
-  target.searchParams.set("error", message)
-  target.searchParams.set("intent", intent)
-  if (next !== "/") target.searchParams.set("next", next)
-  return Response.redirect(target, 303)
+function loginRedirect(message: string, intent: string, next: string): Response {
+  const search = new URLSearchParams({ error: message, intent })
+  if (next !== "/") search.set("next", next)
+  return relativeRedirect(`/login?${search.toString()}`)
 }
 
 function isUsernameConflict(error: unknown): boolean {
@@ -58,7 +57,6 @@ export async function POST(request: Request): Promise<Response> {
 
   if (!USERNAME_PATTERN.test(username)) {
     return loginRedirect(
-      request,
       "Username must be 3–24 characters using letters, numbers, underscores, or hyphens.",
       intent,
       next,
@@ -66,7 +64,6 @@ export async function POST(request: Request): Promise<Response> {
   }
   if (password.length < MIN_PASSWORD_LENGTH || password.length > MAX_PASSWORD_LENGTH) {
     return loginRedirect(
-      request,
       `Password must be ${MIN_PASSWORD_LENGTH}–${MAX_PASSWORD_LENGTH} characters.`,
       intent,
       next,
@@ -76,14 +73,14 @@ export async function POST(request: Request): Promise<Response> {
   if (intent === "sign-in") {
     const user = await fetchUser(db).getOneByUsername(username, ["id", "passwordHash"])
     if (!(await verifyPasswordOrDummy(password, user?.passwordHash))) {
-      return loginRedirect(request, "Incorrect username or password.", intent, next)
+      return loginRedirect("Incorrect username or password.", intent, next)
     }
     await beginSession(user!.id)
-    return Response.redirect(new URL(next, request.url), 303)
+    return relativeRedirect(next)
   }
 
   if (formData.get("terms") !== "on") {
-    return loginRedirect(request, "Please agree to the terms and conditions.", intent, next)
+    return loginRedirect("Please agree to the terms and conditions.", intent, next)
   }
 
   const passwordHash = await hashPassword(password)
@@ -102,11 +99,11 @@ export async function POST(request: Request): Promise<Response> {
     })
   } catch (error) {
     if (isUsernameConflict(error)) {
-      return loginRedirect(request, "That username is already taken.", intent, next)
+      return loginRedirect("That username is already taken.", intent, next)
     }
     throw error
   }
 
   await setSessionTokenCookie(sessionToken, session.expires)
-  return Response.redirect(new URL(next, request.url), 303)
+  return relativeRedirect(next)
 }
