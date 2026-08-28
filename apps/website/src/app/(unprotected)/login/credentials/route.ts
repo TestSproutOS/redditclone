@@ -9,14 +9,14 @@ import {
   verifyPasswordOrDummy,
 } from "@website/lib/password"
 import { isSameOriginRequest } from "@website/lib/same-origin"
-import { relativeRedirect } from "@website/lib/relative-redirect"
+import { isSafeRelativeRedirect, relativeRedirect } from "@website/lib/relative-redirect"
 import { randomUUID } from "node:crypto"
 
 const USERNAME_PATTERN = /^[A-Za-z0-9_-]{3,24}$/
 
 function destination(formData: FormData): string {
   const next = formData.get("next")
-  return typeof next === "string" && next.startsWith("/") && !next.startsWith("//") ? next : "/"
+  return typeof next === "string" && isSafeRelativeRedirect(next) ? next : "/"
 }
 
 function loginRedirect(message: string, intent: string, next: string): Response {
