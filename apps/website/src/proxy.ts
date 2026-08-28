@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server"
 import { NextResponse } from "next/server"
 import { validateSessionToken } from "./lib/auth"
 import { isSameOriginRequest } from "./lib/same-origin"
+import { spaOrigin, type SpaName } from "./lib/spa-origin"
 
 /** Public paths handled by Next.js — everything else goes to the dashboard SPA */
 const NEXTJS_PUBLIC_PREFIXES = ["/login", "/blog", "/api", "/legal", "/about", "/rules"]
@@ -68,11 +69,26 @@ function findSharedRoute(pathname: string): SharedRoute | undefined {
 }
 
 const SPA_ADMIN = {
+  name: "admin",
   prefix: "/admin",
   devPort: 3003,
+  devBasePath: "/admin",
+  assetPrefix: "/admin-assets",
 } as const
 
-const DASHBOARD_DEV_PORT = 3002
+const SPA_DASHBOARD = {
+  name: "dashboard",
+  devPort: 3002,
+  devBasePath: "",
+  assetPrefix: "/dashboard-assets",
+} as const
+
+type SpaConfig = {
+  name: SpaName
+  devPort: number
+  devBasePath: string
+  assetPrefix: string
+}
 
 function isNextJsRoute(pathname: string): boolean {
   if (NEXTJS_PUBLIC_EXACT.has(pathname)) return true
@@ -112,25 +128,17 @@ function handleCsrfAndCookies(request: NextRequest): NextResponse | null {
   return null
 }
 
-function rewriteToSpa(
-  request: NextRequest,
-  pathname: string,
-  devPort: number,
-  devBasePath: string,
-  prodFolder: string,
-): NextResponse {
+function rewriteToSpa(request: NextRequest, pathname: string, spa: SpaConfig): NextResponse {
   const isDev = process.env.NODE_ENV === "development"
-  const spaOrigin = isDev ? `http://localhost:${devPort}` : "https://d1i66hf38xpie.cloudfront.net"
+  const origin = isDev ? `http://localhost:${spa.devPort}` : spaOrigin(spa.name)
 
-  const spaUrl = new URL(pathname, spaOrigin)
+  const spaUrl = new URL(pathname, origin)
   spaUrl.search = request.nextUrl.search
 
-  if (!isAssetRequest(pathname)) {
-    if (isDev) {
-      spaUrl.pathname = `${devBasePath}/`
-    } else {
-      spaUrl.pathname = `${prodFolder}/index.html`
-    }
+  if (!isAssetRequest(pathname) && isDev) {
+    spaUrl.pathname = `${spa.devBasePath}/`
+  } else if (!isAssetRequest(pathname)) {
+    spaUrl.pathname = "/index.html"
   }
 
   return NextResponse.rewrite(spaUrl)
@@ -147,9 +155,9 @@ export async function proxy(request: NextRequest) {
       const result = await validateSessionToken(token)
       if (result !== null) {
         if (sharedRoute.spa === "admin") {
-          return rewriteToSpa(request, pathname, SPA_ADMIN.devPort, "/admin", "/admin")
+          return rewriteToSpa(request, pathname, SPA_ADMIN)
         }
-        return rewriteToSpa(request, pathname, DASHBOARD_DEV_PORT, "", "/dashboard")
+        return rewriteToSpa(request, pathname, SPA_DASHBOARD)
       }
     }
     // No valid session → serve Next.js SSR page
@@ -165,6 +173,27 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next()
   }
 
+  // Production Vite builds emit distinct asset directories. Route those namespaces explicitly;
+  // a bare `/assets/*` path cannot reveal whether dashboard or admin owns the file.
+  if (pathname.startsWith(`${SPA_ADMIN.assetPrefix}/`)) {
+    const token = request.cookies.get("session")?.value ?? null
+    if (token !== null) {
+      const result = await validateSessionToken(token)
+      if (result !== null && result.user.isAdmin) {
+        return rewriteToSpa(request, pathname, SPA_ADMIN)
+      }
+    }
+    return NextResponse.redirect(new URL("/login", request.url))
+  }
+
+  if (pathname.startsWith(`${SPA_DASHBOARD.assetPrefix}/`)) {
+    const token = request.cookies.get("session")?.value ?? null
+    if (token !== null && (await validateSessionToken(token)) !== null) {
+      return rewriteToSpa(request, pathname, SPA_DASHBOARD)
+    }
+    return NextResponse.redirect(new URL("/login", request.url))
+  }
+
   // Admin SPA — requires auth
   if (pathname === SPA_ADMIN.prefix || pathname.startsWith(`${SPA_ADMIN.prefix}/`)) {
     const token = request.cookies.get("session")?.value ?? null
@@ -174,7 +203,7 @@ export async function proxy(request: NextRequest) {
         if (!result.user.isAdmin) {
           return NextResponse.redirect(new URL("/", request.url))
         }
-        return rewriteToSpa(request, pathname, SPA_ADMIN.devPort, "/admin", "/admin")
+        return rewriteToSpa(request, pathname, SPA_ADMIN)
       }
     }
     return NextResponse.redirect(new URL("/login", request.url))
@@ -185,7 +214,7 @@ export async function proxy(request: NextRequest) {
   if (token !== null) {
     const result = await validateSessionToken(token)
     if (result !== null) {
-      return rewriteToSpa(request, pathname, DASHBOARD_DEV_PORT, "", "/dashboard")
+      return rewriteToSpa(request, pathname, SPA_DASHBOARD)
     }
   }
   return NextResponse.redirect(new URL("/login", request.url))

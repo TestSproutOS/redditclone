@@ -12,8 +12,12 @@ const fontsourceFiles = (pkg: string) =>
     `../../../lib/typescript/ui/base/node_modules/@fontsource-variable/${pkg}/files/*.woff2`,
   )
 
-export default defineConfig(({ mode }) => ({
-  base: mode === "production" ? "https://d1i66hf38xpie.cloudfront.net/dashboard/" : "/",
+const ASSETS_DIR = "dashboard-assets"
+
+export default defineConfig({
+  // Each SPA needs its own asset namespace because both are served through the website host.
+  base: "/",
+  build: { assetsDir: ASSETS_DIR },
   define: {
     "process.env.NEXT_PUBLIC_API_URL": JSON.stringify(process.env.NEXT_PUBLIC_API_URL ?? ""),
   },
@@ -24,8 +28,12 @@ export default defineConfig(({ mode }) => ({
     babel({ presets: [reactCompilerPreset()] }),
     viteStaticCopy({
       targets: [
-        { src: fontsourceFiles("geist"), dest: "assets/files", rename: { stripBase: true } },
-        { src: fontsourceFiles("geist-mono"), dest: "assets/files", rename: { stripBase: true } },
+        { src: fontsourceFiles("geist"), dest: `${ASSETS_DIR}/files`, rename: { stripBase: true } },
+        {
+          src: fontsourceFiles("geist-mono"),
+          dest: `${ASSETS_DIR}/files`,
+          rename: { stripBase: true },
+        },
       ],
     }),
   ],
@@ -54,4 +62,4 @@ export default defineConfig(({ mode }) => ({
   server: {
     port: 3002,
   },
-}))
+})

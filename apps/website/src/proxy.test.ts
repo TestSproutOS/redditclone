@@ -12,6 +12,10 @@ import { validateSessionToken } from "./lib/auth"
 const mockValidate = vi.mocked(validateSessionToken)
 
 const VALID_SESSION = { session: {}, user: {} } as Awaited<ReturnType<typeof validateSessionToken>>
+const VALID_ADMIN_SESSION = {
+  session: {},
+  user: { isAdmin: true },
+} as Awaited<ReturnType<typeof validateSessionToken>>
 
 function makeRequest(urlPath: string, sessionToken?: string) {
   const req = new NextRequest(`https://example.com${urlPath}`)
@@ -105,7 +109,9 @@ describe.each(dashboardPages)("shared dashboard route %s", (pattern) => {
     mockValidate.mockResolvedValueOnce(VALID_SESSION)
     const res = await proxy(makeRequest(url, "tok"))
     expect(isRewrite(res)).toBe(true)
-    expect(getRewrittenUrl(res)).toContain("/dashboard")
+    expect(getRewrittenUrl(res)).toBe(
+      "https://reddit-clone-dashboard-4104ab.sproutos.run/index.html",
+    )
   })
 
   it("invalid session → no rewrite", async () => {
@@ -150,7 +156,9 @@ describe("default fallback (non-public, non-shared route)", () => {
     mockValidate.mockResolvedValueOnce(VALID_SESSION)
     const res = await proxy(makeRequest("/settings", "tok"))
     expect(isRewrite(res)).toBe(true)
-    expect(getRewrittenUrl(res)).toContain("/dashboard")
+    expect(getRewrittenUrl(res)).toBe(
+      "https://reddit-clone-dashboard-4104ab.sproutos.run/index.html",
+    )
   })
 
   it("invalid session → redirect to /login", async () => {
@@ -158,6 +166,49 @@ describe("default fallback (non-public, non-shared route)", () => {
     const res = await proxy(makeRequest("/settings", "bad"))
     expect(isRewrite(res)).toBe(false)
     expect(res.headers.get("location")).toContain("/login")
+  })
+})
+
+describe("production static SPA origins", () => {
+  it("rewrites an admin navigation to the verified admin index", async () => {
+    mockValidate.mockResolvedValueOnce(VALID_ADMIN_SESSION)
+    const response = await proxy(makeRequest("/admin/users", "tok"))
+
+    expect(isRewrite(response)).toBe(true)
+    expect(getRewrittenUrl(response)).toBe(
+      "https://reddit-clone-admin-d337a7.sproutos.run/index.html",
+    )
+  })
+
+  it("routes dashboard and admin asset namespaces to their owning static projects", async () => {
+    mockValidate.mockResolvedValueOnce(VALID_SESSION)
+    const dashboard = await proxy(makeRequest("/dashboard-assets/dashboard.js", "tok"))
+    expect(getRewrittenUrl(dashboard)).toBe(
+      "https://reddit-clone-dashboard-4104ab.sproutos.run/dashboard-assets/dashboard.js",
+    )
+
+    mockValidate.mockResolvedValueOnce(VALID_ADMIN_SESSION)
+    const admin = await proxy(makeRequest("/admin-assets/admin.js", "tok"))
+    expect(getRewrittenUrl(admin)).toBe(
+      "https://reddit-clone-admin-d337a7.sproutos.run/admin-assets/admin.js",
+    )
+  })
+
+  it("does not let a non-admin use the admin static origin", async () => {
+    mockValidate.mockResolvedValueOnce(VALID_SESSION)
+    const response = await proxy(makeRequest("/admin-assets/admin.js", "tok"))
+
+    expect(isRewrite(response)).toBe(false)
+    expect(response.headers.get("location")).toContain("/login")
+  })
+
+  it("preserves query strings only on the selected fixed origin", async () => {
+    mockValidate.mockResolvedValueOnce(VALID_SESSION)
+    const response = await proxy(makeRequest("/dashboard-assets/data.js?v=7", "tok"))
+
+    expect(getRewrittenUrl(response)).toBe(
+      "https://reddit-clone-dashboard-4104ab.sproutos.run/dashboard-assets/data.js?v=7",
+    )
   })
 })
 
