@@ -8,6 +8,7 @@ import {
   MIN_PASSWORD_LENGTH,
   verifyPasswordOrDummy,
 } from "@website/lib/password"
+import { isSameOriginRequest } from "@website/lib/same-origin"
 import { randomUUID } from "node:crypto"
 
 const USERNAME_PATTERN = /^[A-Za-z0-9_-]{3,24}$/
@@ -43,6 +44,10 @@ async function beginSession(userId: string): Promise<void> {
 }
 
 export async function POST(request: Request): Promise<Response> {
+  if (!isSameOriginRequest(request)) {
+    return new Response(null, { status: 403 })
+  }
+
   const formData = await request.formData()
   const intent = formData.get("intent") === "sign-in" ? "sign-in" : "register"
   const usernameValue = formData.get("username")
