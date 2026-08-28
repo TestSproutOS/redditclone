@@ -18,7 +18,9 @@ env:
   NPM_CONFIG_FUND: false
   # These SPAs are rewritten under the website's current host. Relative URLs preserve the
   # host-only login cookie on both the canonical and custom domains.
-  NEXT_PUBLIC_API_URL: /api
+  # Generated SDK paths already start with /api/v1; an empty base keeps requests same-origin
+  # without producing /api/api/v1 URLs.
+  NEXT_PUBLIC_API_URL: ""
   VITE_PUBLIC_MEDIA_BASE_URL: /api/v1/media/object
   VITE_NEXTJS_URL: ""
 
