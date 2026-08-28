@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server"
 import { NextResponse } from "next/server"
 import { validateSessionToken } from "./lib/auth"
+import { isSameOriginRequest } from "./lib/same-origin"
 
 /** Public paths handled by Next.js — everything else goes to the dashboard SPA */
 const NEXTJS_PUBLIC_PREFIXES = ["/login", "/blog", "/api", "/legal", "/about", "/rules"]
@@ -104,18 +105,7 @@ function handleCsrfAndCookies(request: NextRequest): NextResponse | null {
     return response
   }
 
-  const originHeader = request.headers.get("Origin")
-  const hostHeader = request.headers.get("X-Forwarded-Host") ?? request.headers.get("Host")
-  if (originHeader === null || hostHeader === null) {
-    return new NextResponse(null, { status: 403, headers: requestHeaders })
-  }
-  let origin: URL
-  try {
-    origin = new URL(originHeader)
-  } catch {
-    return new NextResponse(null, { status: 403, headers: requestHeaders })
-  }
-  if (origin.host !== hostHeader) {
+  if (!isSameOriginRequest(request)) {
     return new NextResponse(null, { status: 403, headers: requestHeaders })
   }
 

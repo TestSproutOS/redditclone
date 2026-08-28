@@ -2,7 +2,7 @@ import { authUser } from "@lib/dao/user/auth"
 import { sha256 } from "@oslojs/crypto/sha2"
 import { encodeBase32LowerCaseNoPadding, encodeHexLowerCase } from "@oslojs/encoding"
 import { type DB, db } from "@template-nextjs/db"
-import type { Selectable } from "kysely"
+import type { Kysely, Selectable } from "kysely"
 import { cookies } from "next/headers"
 import { cache } from "react"
 
@@ -15,6 +15,7 @@ export function generateSessionToken(): string {
 export async function createSession(
   token: string,
   userId: string,
+  database: Kysely<DB> = db,
 ): Promise<Selectable<DB["session"]>> {
   const sessionId = encodeHexLowerCase(sha256(new TextEncoder().encode(token)))
   const newSession = {
@@ -22,7 +23,7 @@ export async function createSession(
     userId,
     expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30),
   }
-  await db.insertInto("session").values(newSession).executeTakeFirstOrThrow()
+  await database.insertInto("session").values(newSession).executeTakeFirstOrThrow()
   return newSession
 }
 

@@ -19,6 +19,16 @@ function makeRequest(urlPath: string, sessionToken?: string) {
   return req
 }
 
+function makePostRequest(origin?: string, headers: Record<string, string> = {}) {
+  return new NextRequest("https://example.com/login/credentials", {
+    method: "POST",
+    headers: {
+      ...(origin === undefined ? {} : { origin }),
+      ...headers,
+    },
+  })
+}
+
 // Copied from next/dist/shared/lib/segment.js — not publicly exported
 function isGroupSegment(segment: string): boolean {
   return segment.startsWith("(") && segment.endsWith(")")
@@ -148,6 +158,26 @@ describe("default fallback (non-public, non-shared route)", () => {
     const res = await proxy(makeRequest("/settings", "bad"))
     expect(isRewrite(res)).toBe(false)
     expect(res.headers.get("location")).toContain("/login")
+  })
+})
+
+describe("state-changing request origin enforcement", () => {
+  it("allows an exact same-origin form post", async () => {
+    expect((await proxy(makePostRequest("https://example.com"))).status).toBe(200)
+  })
+
+  it("rejects missing, cross-host, and cross-scheme origins", async () => {
+    expect((await proxy(makePostRequest())).status).toBe(403)
+    expect((await proxy(makePostRequest("https://attacker.example"))).status).toBe(403)
+    expect((await proxy(makePostRequest("http://example.com"))).status).toBe(403)
+  })
+
+  it("compares against the public forwarded origin", async () => {
+    const request = makePostRequest("https://readit.example", {
+      "x-forwarded-host": "readit.example",
+      "x-forwarded-proto": "https",
+    })
+    expect((await proxy(request)).status).toBe(200)
   })
 })
 

@@ -559,6 +559,7 @@ export interface User {
   image: string | null
   isAdmin: Generated<boolean>
   name: string | null
+  passwordHash: string | null
   postKarma: Generated<number>
   suspendedAt: Timestamp | null
   suspensionReason: string | null
