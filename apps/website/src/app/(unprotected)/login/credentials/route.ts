@@ -1,7 +1,7 @@
 import { crudUser } from "@lib/dao/user/crud"
 import { fetchUser } from "@lib/dao/user/fetch"
 import { db } from "@template-nextjs/db"
-import { createSession, generateSessionToken, setSessionTokenCookie } from "@website/lib/auth"
+import { createSession, generateSessionToken } from "@website/lib/auth"
 import {
   hashPassword,
   MAX_PASSWORD_LENGTH,
@@ -10,6 +10,7 @@ import {
 } from "@website/lib/password"
 import { isSameOriginRequest } from "@website/lib/same-origin"
 import { isSafeRelativeRedirect, relativeRedirect } from "@website/lib/relative-redirect"
+import { attachSessionTokenCookie } from "@website/lib/session-cookie"
 import { randomUUID } from "node:crypto"
 
 const USERNAME_PATTERN = /^[A-Za-z0-9_-]{3,24}$/
@@ -36,10 +37,10 @@ function isUsernameConflict(error: unknown): boolean {
   )
 }
 
-async function beginSession(userId: string): Promise<void> {
+async function beginSession(userId: string): Promise<{ token: string; expires: Date }> {
   const sessionToken = generateSessionToken()
   const session = await createSession(sessionToken, userId)
-  await setSessionTokenCookie(sessionToken, session.expires)
+  return { token: sessionToken, expires: session.expires }
 }
 
 export async function POST(request: Request): Promise<Response> {
@@ -75,8 +76,10 @@ export async function POST(request: Request): Promise<Response> {
     if (!(await verifyPasswordOrDummy(password, user?.passwordHash))) {
       return loginRedirect("Incorrect username or password.", intent, next)
     }
-    await beginSession(user!.id)
-    return relativeRedirect(next)
+    const session = await beginSession(user!.id)
+    const response = relativeRedirect(next)
+    attachSessionTokenCookie(response, session.token, session.expires)
+    return response
   }
 
   if (formData.get("terms") !== "on") {
@@ -104,6 +107,7 @@ export async function POST(request: Request): Promise<Response> {
     throw error
   }
 
-  await setSessionTokenCookie(sessionToken, session.expires)
-  return relativeRedirect(next)
+  const response = relativeRedirect(next)
+  attachSessionTokenCookie(response, sessionToken, session.expires)
+  return response
 }

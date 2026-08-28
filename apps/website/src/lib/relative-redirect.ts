@@ -1,3 +1,5 @@
+import { NextResponse } from "next/server"
+
 /**
  * Returns a browser redirect without resolving it against the Lambda listener address.
  *
@@ -23,9 +25,9 @@ export function isSafeRelativeRedirect(location: string): boolean {
   }
 }
 
-export function relativeRedirect(location: string): Response {
+export function relativeRedirect(location: string): NextResponse {
   if (!isSafeRelativeRedirect(location)) {
     throw new Error("redirect location must be a root-relative path")
   }
-  return new Response(null, { status: 303, headers: { location } })
+  return new NextResponse(null, { status: 303, headers: { location } })
 }
