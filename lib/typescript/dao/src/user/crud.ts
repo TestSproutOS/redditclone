@@ -8,9 +8,7 @@ export function crudUser(db: Kysely<DB>) {
     data: PartialBy<Insertable<DB["user"]>, "id">,
   ): Promise<Selectable<DB["user"]>> {
     const values = { id: data.id ?? v7(), ...data }
-    return await db.transaction().execute(async (tx) => {
-      return await tx.insertInto("user").values(values).returningAll().executeTakeFirstOrThrow()
-    })
+    return await db.insertInto("user").values(values).returningAll().executeTakeFirstOrThrow()
   }
 
   async function updateUser(
